@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "strict": true,
+        "preserveConstEnums": true,
+        "noEmit": true,
+        "outDir": "dist",
+        "sourceMap": false,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "types": [
+            "node",
+            "vitest/globals"
+        ]
+    },
+    "include": [
+        "src",
+        "environment.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
