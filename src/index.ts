@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { json } from 'express';
+import express, { json, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import http from 'http';
 import cookieParser from 'cookie-parser';
@@ -37,12 +37,12 @@ const supabase = createClient(
 );
 
 // Healthcheck
-app.get('/', (_req, res) => {
+app.get('/', (_req: any, res: any) => {
   res.status(200).json({ message: 'hello' });
 });
 
 // ─── Start a new chat ─────────────────────────────────────────────────────────
-app.post('/chat/start', async (_req, res) => {
+app.post('/chat/start', async (_req: any, res: any) => {
   try {
     // 1. Create chat row
     const { data: chat, error: chatError } = await supabase
@@ -83,7 +83,7 @@ app.post('/chat/start', async (_req, res) => {
 });
 
 // ─── Student sends a message (with bot reply) ─────────────────────────────────
-app.post('/chat/:chatId/message', async (req, res) => {
+app.post('/chat/:chatId/message', async (req: any, res: any) => {
   const { chatId } = req.params;
   const { content } = req.body;
 
@@ -199,7 +199,7 @@ app.post('/chat/:chatId/message', async (req, res) => {
 // ─── Admin auth ───────────────────────────────────────────────────────────────
 
 // Admin login
-app.post('/login', (req, res) => {
+app.post('/login', (req: any, res: any) => {
   const { password } = req.body ?? {};
   const hashedPassword = hash(password);
 
@@ -217,7 +217,7 @@ app.post('/login', (req, res) => {
 });
 
 // Admin logout
-app.post('/logout', (_req, res) => {
+app.post('/logout', (_req: any, res: any) => {
   res.clearCookie('auth', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -230,12 +230,12 @@ app.post('/logout', (_req, res) => {
 // ─── Protected admin routes ───────────────────────────────────────────────────
 
 // Check if is authenticated
-app.get('/admin/auth', authMiddleware, async (_req, res) => {
+app.get('/admin/auth', authMiddleware, async (_req: any, res: any) => {
   res.status(200).send('authenticated');
 });
 
 // Get all chats (dashboard view)
-app.get('/admin/chats', authMiddleware, async (_req, res) => {
+app.get('/admin/chats', authMiddleware, async (_req: any, res: any) => {
   try {
     const { data, error } = await supabase.from('chats').select(`
         *,
@@ -261,55 +261,61 @@ app.get('/admin/chats', authMiddleware, async (_req, res) => {
 });
 
 // Admin reply in a chat
-app.post('/admin/chat/:chatId/reply', authMiddleware, async (req, res) => {
-  const { chatId } = req.params;
-  const { content } = req.body;
+app.post(
+  '/admin/chat/:chatId/reply',
+  authMiddleware,
+  async (req: any, res: any) => {
+    const { chatId } = req.params;
+    const { content } = req.body;
 
-  // Insert message
-  const { error } = await supabase.from('messages').insert({
-    chat_id: chatId,
-    sender: 'admin',
-    content,
-  });
+    // Insert message
+    const { error } = await supabase.from('messages').insert({
+      chat_id: chatId,
+      sender: 'admin',
+      content,
+    });
 
-  if (error) {
-    log.error(error);
-    return res.status(500).json({ error: 'Failed to send reply' });
-  }
-
-  // Update to status=human if it's awaiting_human previously
-  try {
-    // Fetch current chat status
-    const { data: chatData, error: chatError } = await supabase
-      .from('chats')
-      .select('status')
-      .eq('id', chatId)
-      .single();
-
-    if (chatError || !chatData) {
-      log.error(chatError);
-      return res.status(500).json({ error: 'Failed to fetch chat status' });
+    if (error) {
+      log.error(error);
+      return res.status(500).json({ error: 'Failed to send reply' });
     }
 
-    // If status is awaiting_human, update to human
-    if (chatData.status === 'awaiting_human') {
-      const { error: statusError } = await supabase
+    // Update to status=human if it's awaiting_human previously
+    try {
+      // Fetch current chat status
+      const { data: chatData, error: chatError } = await supabase
         .from('chats')
-        .update({ status: 'human' })
-        .eq('id', chatId);
+        .select('status')
+        .eq('id', chatId)
+        .single();
 
-      if (statusError) {
-        log.error(statusError);
-        return res.status(500).json({ error: 'Failed to update chat status' });
+      if (chatError || !chatData) {
+        log.error(chatError);
+        return res.status(500).json({ error: 'Failed to fetch chat status' });
       }
-    }
 
-    res.status(200).json({ message: 'Reply sent' });
-  } catch (err) {
-    log.error(err);
-    return res.status(500).json({ error: 'Failed to update chat status' });
+      // If status is awaiting_human, update to human
+      if (chatData.status === 'awaiting_human') {
+        const { error: statusError } = await supabase
+          .from('chats')
+          .update({ status: 'human' })
+          .eq('id', chatId);
+
+        if (statusError) {
+          log.error(statusError);
+          return res
+            .status(500)
+            .json({ error: 'Failed to update chat status' });
+        }
+      }
+
+      res.status(200).json({ message: 'Reply sent' });
+    } catch (err) {
+      log.error(err);
+      return res.status(500).json({ error: 'Failed to update chat status' });
+    }
   }
-});
+);
 
 // ─── Server start ─────────────────────────────────────────────────────────────
 server.listen(app.get('port'), () => {
