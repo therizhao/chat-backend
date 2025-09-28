@@ -6,7 +6,6 @@
   "module": "src/index.ts",
   "scripts": {
     "dev": "nodemon src/index.ts",
-    "test": "vitest",
     "build": "tsc && rm -rf dist && esbuild src/index.ts --bundle --minify --platform=node --target=es2020 --outfile=dist/index.cjs",
     "start": "node dist/index.cjs",
     "preview": "npm run build && npm run start"
